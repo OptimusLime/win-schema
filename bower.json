@@ -1,0 +1,16 @@
+{
+  "name": "win-schema",
+  "version": "0.0.1",
+  "description": " WIN module that handles all things schema related! Schema validation, schema loading, schema remote loads, etc etc etc",
+  "keywords": [
+    "WIN",
+    "evolution",
+    "iec",
+    "neat"
+  ],
+  "repo": "https://github.com/OptimusLime/win-schema",
+  "main": "lib/win-schema.js",
+  "dependencies": {
+    "tv4": "*"
+  }
+}
