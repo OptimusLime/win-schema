@@ -9,31 +9,41 @@ var Q = require('q');
 var util = require('util');
 
 
+var cbFunction = function(backbone, defer)
+{
+	return function() {
+		var err = [].shift.call(arguments);
+
+		if(err)
+			defer.reject(err);
+		else{
+			// backbone.log("Arg lenth: ".cyan,arguments.length);
+			var nArgs = [];
+			for(var i=0; i < arguments.length; i++)
+				nArgs.push(arguments[i]);
+			//take out the error
+			defer.resolve.apply(this, nArgs);
+			// backbone.log("Arg after: ".red, arguments);
+		}
+	};
+}
+
 var qBackboneEmit = function()
 {
 	//defer the mofo please!
 	var defer = Q.defer();
 
+	var oArgs = arguments;
 	//take out the first arguments
-	var backbone =  [].shift.call(arguments);
+	var backbone =  [].shift.call(oArgs);
 
 	if(typeof backbone == "string")
 		throw new Error("Q callback wrong first arg should be backbone, not :" + backbone)
 
-	var cb = function(err)
-	{
-		if(err)
-			defer.reject.apply(defer, arguments);
-		else{
-			[].shift.call(arguments);
-			//take out the error
-			defer.resolve.apply(defer, arguments)
-		}
-	};
+	var cb = cbFunction(backbone, defer);
+	[].push.call(oArgs, cb);
 
-	[].push.call(arguments, cb);
-
-	backbone.emit.apply(backbone, arguments);
+	backbone.emit.apply(backbone, oArgs);
 
 	//send back our promise to resolve/reject
 	return defer.promise;
@@ -48,6 +58,7 @@ var emptyModule =
 		"schema:addSchema",
 		"schema:getSchema",
 		"schema:getSchemaReferences",
+		"schema:getFullSchema",
 		"schema:validate"
 		];
 	},
@@ -103,11 +114,12 @@ describe('Testing Win Generating Artifacts -',function(){
 
     	var otherSchema = {
     		things : "string"
+    		// {"$ref" : "exampleSchema"}
     	};
     	var exampleSchema  = {
     		// noFirst : "object",
     		// yesFirst : {type: "object", yesSecond: {noThird: "array", noFourth: "object"}},
-    		bugger : {this : "string"},
+    		bugger : {aThing : "string"},
     		// noSecond : "array",
     		ref : {"$ref": "secondSchema"}
 
@@ -129,18 +141,18 @@ describe('Testing Win Generating Artifacts -',function(){
     	}
 
     	var thingy = {
-    		bugger : {this : "help"},
-    		hope : { notProp: 5, isProp: 5},
-    		ref : {things : "stuff"},
-    		stuff : {
-    			num : "5",
-    			inner: {
-    				geno : {},
-    				geno2 : "some string"
-    			},
-    			wrong : "things"
-    		},
-    		not : "the right stuff"
+    		bugger : {aThing : "help"},
+    		// hope : { notProp: 5, isProp: 5},
+    		ref : {things : "stuff"}
+    		// , stuff : {
+    			// num : "5",
+    			// inner: {
+    				// geno : {},
+    				// geno2 : "some string"
+    			// },
+    			// wrong : "things"
+    		// },
+    		// not : "the right stuff"
     	};
 
 		backbone.log('Adding exampleSchema');
@@ -154,20 +166,39 @@ describe('Testing Win Generating Artifacts -',function(){
 			{
 				return qBackboneEmit(backbone, "test",  "schema:getSchema", "exampleSchema");
 			})
+			.then(function()
+			{
+				return qBackboneEmit(backbone, "test",  "schema:getFullSchema", "exampleSchema");
+			})
     		.then(function(fullSchema)
     		{	
-    			backbone.log("\tFull schema: ".blue, util.inspect(fullSchema, false, 10));
-    			return qBackboneEmit(backbone, "test", "schema:validate", "exampleSchema", thingy);
-    		})
-    		.then(function(isValid, reasons)
-    		{
-    			backbone.log('validity results - valid? ', isValid, " if not, why not? ", reasons);
+    			var defer = Q.defer();
 
-    			//done for now
+    			backbone.log("\tFull schema: ".blue, util.inspect(fullSchema, false, 10));
+
+    			backbone.emit("test", "schema:validate", "exampleSchema", thingy, function(err, isValid, issues)
+    			{
+    				if(err)
+    					defer.reject(err);
+
+    				backbone.log('Valid? ' + isValid);
+
+    				if(isValid)
+    					should.not.exist(issues);// issues.errors.should.not.exist();
+    				else
+    					should.exist(issues);
+    				// console.log("IsValid: ", isValid, " if no, why not? ", issues);
+    				defer.resolve();
+    			});
+
+    			return defer.promise;
+    		})
+    		.then(function(isValid, issues)
+    		{
     			done();
     		})
     		.fail(function(err){
-    			backbone.log('Error found: ', err);
+    			// backbone.log('Error found: ', err);
     			
     			err = typeof err == "string" ? new Error(err) : err;
     			done(err);

@@ -1,6 +1,6 @@
 {
   "name": "win-schema",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": " WIN module that handles all things schema related! Schema validation, schema loading, schema remote loads, etc etc etc",
   "keywords": [
     "WIN",
@@ -14,7 +14,7 @@
   ],
   "main": "lib/win-schema.js",
   "dependencies": {
-    "optimuslime/traverse" : "*",
+    "optimuslime/traverse": "*",
     "geraintluff/tv4": "*"
   }
 }
