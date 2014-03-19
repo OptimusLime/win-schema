@@ -81,6 +81,7 @@ describe('Testing Win Generating Artifacts -',function(){
 		};
 
     	backbone = new winback();
+    	backbone.log.logLevel = backbone.log.testing;
 
     	//loading modules is synchronous
     	backbone.loadModules(sampleJSON, configurations);
@@ -88,8 +89,8 @@ describe('Testing Win Generating Artifacts -',function(){
     	var registeredEvents = backbone.registeredEvents();
     	var requiredEvents = backbone.moduleRequirements();
     		
-    	console.log('Backbone Events registered: ', registeredEvents);
-    	console.log('Required: ', requiredEvents);
+    	backbone.log('Backbone Events registered: ', registeredEvents);
+    	backbone.log('Required: ', requiredEvents);
 
     	backbone.initializeModules(function()
     	{
@@ -142,11 +143,11 @@ describe('Testing Win Generating Artifacts -',function(){
     		not : "the right stuff"
     	};
 
-		console.log('Adding exampleSchema');
+		backbone.log('Adding exampleSchema');
     	qBackboneEmit(backbone, "test",  "schema:addSchema", "exampleSchema", exampleSchema)
     		.then(function()
 			{
-				console.log('Adding secondSchema');
+				backbone.log('Adding secondSchema');
 		 		return qBackboneEmit(backbone, "test",  "schema:addSchema", "secondSchema", otherSchema);
 			})
 			.then(function()
@@ -155,18 +156,18 @@ describe('Testing Win Generating Artifacts -',function(){
 			})
     		.then(function(fullSchema)
     		{	
-    			console.log("\tFull schema: ".blue, util.inspect(fullSchema, false, 10));
+    			backbone.log("\tFull schema: ".blue, util.inspect(fullSchema, false, 10));
     			return qBackboneEmit(backbone, "test", "schema:validate", "exampleSchema", thingy);
     		})
     		.then(function(isValid, reasons)
     		{
-    			console.log('validity results - valid? ', isValid, " if not, why not? ", reasons);
+    			backbone.log('validity results - valid? ', isValid, " if not, why not? ", reasons);
 
     			//done for now
     			done();
     		})
     		.fail(function(err){
-    			console.log('Error found: ', err);
+    			backbone.log('Error found: ', err);
     			
     			err = typeof err == "string" ? new Error(err) : err;
     			done(err);
