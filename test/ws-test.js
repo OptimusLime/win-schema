@@ -59,7 +59,8 @@ var emptyModule =
 		"schema:getSchema",
 		"schema:getSchemaReferences",
 		"schema:getFullSchema",
-		"schema:validate"
+		"schema:validate",
+		"schema:validateMany"
 		];
 	},
 	initialize : function(done)
@@ -127,7 +128,7 @@ describe('Testing Win Generating Artifacts -',function(){
     		// required : ['hope', 'stuff']		
     	};
 
-    	var validExample = {
+    	var thingy = {
     		bugger : {skip : "string"},
     		hope : "stuff",
     		stuff : {
@@ -140,7 +141,7 @@ describe('Testing Win Generating Artifacts -',function(){
     		}
     	}
 
-    	var thingy = {
+    	var validExample = {
     		bugger : {aThing : "help"},
     		// hope : { notProp: 5, isProp: 5},
     		ref : {things : "stuff"}
@@ -176,10 +177,12 @@ describe('Testing Win Generating Artifacts -',function(){
 
     			backbone.log("\tFull schema: ".blue, util.inspect(fullSchema, false, 10));
 
-    			backbone.emit("test", "schema:validate", "exampleSchema", thingy, function(err, isValid, issues)
+    			backbone.emit("test", "schema:validate", "exampleSchema", validExample, function(err, isValid, issues)
     			{
-    				if(err)
+    				if(err){
     					defer.reject(err);
+    					return;
+    				}
 
     				backbone.log('Valid? ' + isValid);
 
@@ -187,6 +190,39 @@ describe('Testing Win Generating Artifacts -',function(){
     					should.not.exist(issues);// issues.errors.should.not.exist();
     				else
     					should.exist(issues);
+    				// console.log("IsValid: ", isValid, " if no, why not? ", issues);
+    				defer.resolve();
+    			});
+
+    			return defer.promise;
+    		})
+    		.then(function()
+    		{
+    			var defer = Q.defer();
+
+    			backbone.emit("test", "schema:validateMany", "exampleSchema", [validExample, thingy], function(err, isValid, issues)
+    			{
+    				if(err){
+    					defer.reject(err);
+    					return;
+    				}
+
+    				backbone.log('Many Valid? ' + isValid);
+
+    				if(!isValid)
+    				{
+    					for(var i=0; i < issues.length; i++)
+    					{
+    						backbone.log("Is object " + i + " valid? ".green, (issues[i].length ? "No.".red : "Yes.".blue));
+    					}
+    				}
+    				// backbone.log("Issues: ", issues);
+
+    				if(isValid)
+    					should.not.exist(issues);// issues.errors.should.not.exist();
+    				else
+    					should.exist(issues);
+    				
     				// console.log("IsValid: ", isValid, " if no, why not? ", issues);
     				defer.resolve();
     			});
