@@ -75,6 +75,7 @@ describe('Testing Win Generating Artifacts -',function(){
 		{
 			"win-schema" : {
 				multipleErrors : true,
+				allowAnyObjects : false,
 				requireByDefault : false
 			}
 		};
@@ -100,47 +101,21 @@ describe('Testing Win Generating Artifacts -',function(){
     it('Should add schema successfully',function(done){
 
     	var otherSchema = {
-    		properties : {
-	    		things : "part 2"
-    		}
+    		things : "string"
     	};
     	var exampleSchema  = {
-    		bugger : {
+    		// noFirst : "object",
+    		// yesFirst : {type: "object", yesSecond: {noThird: "array", noFourth: "object"}},
+    		bugger : {this : "string"},
+    		// noSecond : "array",
+    		ref : {"$ref": "secondSchema"}
 
-    		},
-    		properties : {
-    			hope : { 
-					notProp : {
-						type : "string"
-					}, 
-					properties: {
-						isProp : {
-							type : "string"
-						}	
-					}
-											
-    			},
-    			stuff : {
-	    			properties : {
-	    				inner : {
-							geno : { "$ref" : "monkeyMaker" },
-							properties : {
-								geno2 : {type: "string"}
-							}
-	    				},
-	    				num : {type: "string"}
-	    			}
-    			}
-    			// ,properties : {
-    			// 	dont : "understand this setup"
-    			// }
-    		},
-    		required: ['hope', 'stuff', 'bugger']
+
     		// required : ['hope', 'stuff']		
     	};
 
     	var validExample = {
-    		bugger : {},
+    		bugger : {skip : "string"},
     		hope : "stuff",
     		stuff : {
     			num : 4,
@@ -153,8 +128,9 @@ describe('Testing Win Generating Artifacts -',function(){
     	}
 
     	var thingy = {
-    		bugger : {},
+    		bugger : {this : "help"},
     		hope : { notProp: 5, isProp: 5},
+    		ref : {things : "stuff"},
     		stuff : {
     			num : "5",
     			inner: {
@@ -164,13 +140,14 @@ describe('Testing Win Generating Artifacts -',function(){
     			wrong : "things"
     		},
     		not : "the right stuff"
-    	}
+    	};
 
+		console.log('Adding exampleSchema');
     	qBackboneEmit(backbone, "test",  "schema:addSchema", "exampleSchema", exampleSchema)
     		.then(function()
 			{
-				console.log('Adding monkeyMaker');
-		 		return qBackboneEmit(backbone, "test",  "schema:addSchema", "monkeyMaker", otherSchema);
+				console.log('Adding secondSchema');
+		 		return qBackboneEmit(backbone, "test",  "schema:addSchema", "secondSchema", otherSchema);
 			})
 			.then(function()
 			{
