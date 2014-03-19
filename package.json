@@ -17,6 +17,9 @@
     "tv4": "*"
   },
   "devDependencies": {
+    "colors" :"*",
+    "q" : "*",
+    "optimuslime-traverse" :"*",
     "should": "*",
     "mocha": "*",
     "win-backbone": "*"

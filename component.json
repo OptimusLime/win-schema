@@ -14,6 +14,7 @@
   ],
   "main": "lib/win-schema.js",
   "dependencies": {
+    "optimuslime/traverse" : "*",
     "geraintluff/tv4": "*"
   }
 }

@@ -1,10 +1,43 @@
 
 var assert = require('assert');
 var should = require('should');
+var colors = require('colors');
 
 var winschema = require('../');
 var winback = require('win-backbone');
+var Q = require('q');
+var util = require('util');
 
+
+var qBackboneEmit = function()
+{
+	//defer the mofo please!
+	var defer = Q.defer();
+
+	//take out the first arguments
+	var backbone =  [].shift.call(arguments);
+
+	if(typeof backbone == "string")
+		throw new Error("Q callback wrong first arg should be backbone, not :" + backbone)
+
+	var cb = function(err)
+	{
+		if(err)
+			defer.reject.apply(defer, arguments);
+		else{
+			[].shift.call(arguments);
+			//take out the error
+			defer.resolve.apply(defer, arguments)
+		}
+	};
+
+	[].push.call(arguments, cb);
+
+	backbone.emit.apply(backbone, arguments);
+
+	//send back our promise to resolve/reject
+	return defer.promise;
+}
 
 var emptyModule = 
 {
@@ -14,7 +47,8 @@ var emptyModule =
 		return [
 		"schema:addSchema",
 		"schema:getSchema",
-		"schema:getSchemaReferences"
+		"schema:getSchemaReferences",
+		"schema:validate"
 		];
 	},
 	initialize : function(done)
@@ -39,6 +73,10 @@ describe('Testing Win Generating Artifacts -',function(){
 
 		var configurations = 
 		{
+			"win-schema" : {
+				multipleErrors : true,
+				requireByDefault : false
+			}
 		};
 
     	backbone = new winback();
@@ -61,21 +99,102 @@ describe('Testing Win Generating Artifacts -',function(){
 
     it('Should add schema successfully',function(done){
 
+    	var otherSchema = {
+    		properties : {
+	    		things : "part 2"
+    		}
+    	};
     	var exampleSchema  = {
-    		hope : "this doesn't work as schema"
+    		bugger : {
+
+    		},
+    		properties : {
+    			hope : { 
+					notProp : {
+						type : "string"
+					}, 
+					properties: {
+						isProp : {
+							type : "string"
+						}	
+					}
+											
+    			},
+    			stuff : {
+	    			properties : {
+	    				inner : {
+							geno : { "$ref" : "monkeyMaker" },
+							properties : {
+								geno2 : {type: "string"}
+							}
+	    				},
+	    				num : {type: "string"}
+	    			}
+    			}
+    			// ,properties : {
+    			// 	dont : "understand this setup"
+    			// }
+    		},
+    		required: ['hope', 'stuff', 'bugger']
+    		// required : ['hope', 'stuff']		
     	};
 
-    	//now we call asking for 
-    	backbone.emit("test", "schema:addSchema", "exampleSchema", exampleSchema, function(err)
-		{
-			if(err)
-				throw err;
+    	var validExample = {
+    		bugger : {},
+    		hope : "stuff",
+    		stuff : {
+    			num : 4,
+    			inner : {
 
-	    	console.log('Finished adding schema, ', exampleSchema);
-	    	done();   
+    				geno : {things : []},
+    				geno2 : "some string"
+    			}
+    		}
+    	}
 
-		});
-    
+    	var thingy = {
+    		bugger : {},
+    		hope : { notProp: 5, isProp: 5},
+    		stuff : {
+    			num : "5",
+    			inner: {
+    				geno : {},
+    				geno2 : "some string"
+    			},
+    			wrong : "things"
+    		},
+    		not : "the right stuff"
+    	}
+
+    	qBackboneEmit(backbone, "test",  "schema:addSchema", "exampleSchema", exampleSchema)
+    		.then(function()
+			{
+				console.log('Adding monkeyMaker');
+		 		return qBackboneEmit(backbone, "test",  "schema:addSchema", "monkeyMaker", otherSchema);
+			})
+			.then(function()
+			{
+				return qBackboneEmit(backbone, "test",  "schema:getSchema", "exampleSchema");
+			})
+    		.then(function(fullSchema)
+    		{	
+    			console.log("\tFull schema: ".blue, util.inspect(fullSchema, false, 10));
+    			return qBackboneEmit(backbone, "test", "schema:validate", "exampleSchema", thingy);
+    		})
+    		.then(function(isValid, reasons)
+    		{
+    			console.log('validity results - valid? ', isValid, " if not, why not? ", reasons);
+
+    			//done for now
+    			done();
+    		})
+    		.fail(function(err){
+    			console.log('Error found: ', err);
+    			
+    			err = typeof err == "string" ? new Error(err) : err;
+    			done(err);
+    		});
+
     });
 
 
