@@ -156,7 +156,10 @@ describe('Testing Win Generating Artifacts -',function(){
     		ref :[ 
     			{things : "stuff"}
     		],
-    		firstArray : [[{things: "stuff"}]]
+    		firstArray : [[{things: "stuff"}]],
+    		wid : "abcded"
+    		,dbType : "exampleSchema"
+    		,parents : []
     		// , stuff : {
     			// num : "5",
     			// inner: {
@@ -173,7 +176,8 @@ describe('Testing Win Generating Artifacts -',function(){
     		.then(function()
 			{
 				backbone.log('Adding secondSchema');
-		 		return qBackboneEmit(backbone, "test",  "schema:addSchema", "secondSchema", otherSchema);
+				//add schema without any WIn things attached to it-- with the options param!
+		 		return qBackboneEmit(backbone, "test",  "schema:addSchema", "secondSchema", otherSchema, {skipWINAdditions: true});
 			})
 			.then(function()
 			{
