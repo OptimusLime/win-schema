@@ -114,6 +114,7 @@ describe('Testing Win Generating Artifacts -',function(){
     it('Should add schema successfully',function(done){
 
     	var otherSchema = {
+    		type : "array",
     		things : "string"
     		// {"$ref" : "exampleSchema"}
     	};
@@ -122,9 +123,17 @@ describe('Testing Win Generating Artifacts -',function(){
     		// yesFirst : {type: "object", yesSecond: {noThird: "array", noFourth: "object"}},
     		bugger : {aThing : "string"},
     		// noSecond : "array",
-    		ref : {"$ref": "secondSchema"}
-
-
+    		ref : {"$ref": "secondSchema"},
+    		firstArray: {
+    			type : "array",
+    			"$ref": "secondSchema",
+    			// items : {
+    				// type : "object",
+    				// properties :{
+    					// stuff : "string"
+    				// }
+    			// }
+    		}
     		// required : ['hope', 'stuff']		
     	};
 
@@ -144,7 +153,10 @@ describe('Testing Win Generating Artifacts -',function(){
     	var validExample = {
     		bugger : {aThing : "help"},
     		// hope : { notProp: 5, isProp: 5},
-    		ref : {things : "stuff"}
+    		ref :[ 
+    			{things : "stuff"}
+    		],
+    		firstArray : [[{things: "stuff"}]]
     		// , stuff : {
     			// num : "5",
     			// inner: {
@@ -165,17 +177,18 @@ describe('Testing Win Generating Artifacts -',function(){
 			})
 			.then(function()
 			{
-				return qBackboneEmit(backbone, "test",  "schema:getSchema", "exampleSchema");
+				return qBackboneEmit(backbone, "test",  "schema:getSchemaReferences", "exampleSchema");
 			})
-			.then(function()
+			.then(function(sRefs)
 			{
+				backbone.log("\tSchema refs: ".cyan, util.inspect(sRefs, false, 10));
 				return qBackboneEmit(backbone, "test",  "schema:getFullSchema", "exampleSchema");
 			})
     		.then(function(fullSchema)
     		{	
     			var defer = Q.defer();
 
-    			backbone.log("\tFull schema: ".blue, util.inspect(fullSchema, false, 10));
+    			backbone.log("\tFull schema: ".blue, util.inspect(fullSchema[0], false, 10));
 
     			backbone.emit("test", "schema:validate", "exampleSchema", validExample, function(err, isValid, issues)
     			{
@@ -211,10 +224,17 @@ describe('Testing Win Generating Artifacts -',function(){
 
     				if(!isValid)
     				{
+    					var validity = [];
     					for(var i=0; i < issues.length; i++)
     					{
     						backbone.log("Is object " + i + " valid? ".green, (issues[i].length ? "No.".red : "Yes.".blue));
+    						var aIssue = issues[i];
+    						for(var e=0; e < aIssue.length; e++)
+    						{
+    							validity.push(aIssue[e].dataPath + "- issue: " + aIssue[e].message);
+    						}
     					}
+    					throw new Error(JSON.stringify(validity));
     				}
     				// backbone.log("Issues: ", issues);
 
