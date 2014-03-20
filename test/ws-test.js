@@ -58,6 +58,7 @@ var emptyModule =
 		"schema:addSchema",
 		"schema:getSchema",
 		"schema:getSchemaReferences",
+		"schema:getSchemaProperties",
 		"schema:getFullSchema",
 		"schema:validate",
 		"schema:validateMany"
@@ -121,7 +122,7 @@ describe('Testing Win Generating Artifacts -',function(){
     	var exampleSchema  = {
     		// noFirst : "object",
     		// yesFirst : {type: "object", yesSecond: {noThird: "array", noFourth: "object"}},
-    		bugger : {aThing : "string"},
+    		bugger : {aThing : "string", inner: {type: "array", test: "string"}},
     		// noSecond : "array",
     		ref : {"$ref": "secondSchema"},
     		firstArray: {
@@ -151,7 +152,7 @@ describe('Testing Win Generating Artifacts -',function(){
     	}
 
     	var validExample = {
-    		bugger : {aThing : "help"},
+    		bugger : {aThing : "help", inner:[]},
     		// hope : { notProp: 5, isProp: 5},
     		ref :[ 
     			{things : "stuff"}
@@ -215,6 +216,12 @@ describe('Testing Win Generating Artifacts -',function(){
     		})
     		.then(function()
     		{
+		 		return qBackboneEmit(backbone, "test",  "schema:getSchemaProperties", ["exampleSchema", "secondSchema"]);
+    		})
+    		.then(function(props)
+    		{
+    			backbone.log("\n\tSchema props: ".magenta, props[0], "\n")
+    			backbone.log("\n\tSchema props2: ".magenta, props[1], "\n")
     			var defer = Q.defer();
 
     			backbone.emit("test", "schema:validateMany", "exampleSchema", [validExample, thingy], function(err, isValid, issues)
