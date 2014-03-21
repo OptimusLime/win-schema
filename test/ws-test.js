@@ -85,6 +85,7 @@ describe('Testing Win Generating Artifacts -',function(){
 
 		var configurations = 
 		{
+			// "global" : {},
 			"win-schema" : {
 				logLevel : backbone.testing,
 				multipleErrors : true,
