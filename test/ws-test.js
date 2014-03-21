@@ -8,8 +8,9 @@ var winback = require('win-backbone');
 var Q = require('q');
 var util = require('util');
 
+var backLog, backEmit;
 
-var cbFunction = function(backbone, defer)
+var cbFunction = function(defer)
 {
 	return function() {
 		var err = [].shift.call(arguments);
@@ -17,13 +18,13 @@ var cbFunction = function(backbone, defer)
 		if(err)
 			defer.reject(err);
 		else{
-			// backbone.log("Arg lenth: ".cyan,arguments.length);
+			// backLog("Arg lenth: ".cyan,arguments.length);
 			var nArgs = [];
 			for(var i=0; i < arguments.length; i++)
 				nArgs.push(arguments[i]);
 			//take out the error
 			defer.resolve.apply(this, nArgs);
-			// backbone.log("Arg after: ".red, arguments);
+			// backLog("Arg after: ".red, arguments);
 		}
 	};
 }
@@ -34,16 +35,11 @@ var qBackboneEmit = function()
 	var defer = Q.defer();
 
 	var oArgs = arguments;
-	//take out the first arguments
-	var backEmit =  [].shift.call(oArgs);
 
-	if(typeof backbone == "string")
-		throw new Error("Q callback wrong first arg should be backbone, not :" + backbone)
-
-	var cb = cbFunction(backbone, defer);
+	var cb = cbFunction(defer);
 	[].push.call(oArgs, cb);
 
-	backEmit.apply(backbone, oArgs);
+	backEmit.apply(backEmit, oArgs);
 
 	//send back our promise to resolve/reject
 	return defer.promise;
@@ -78,6 +74,9 @@ describe('Testing Win Generating Artifacts -',function(){
     //we need to start up the WIN backend
     before(function(done){
 
+    	//create backbone up front :)
+    	backbone = new winback();
+
     	var sampleJSON = 
 		{
 			"win-schema" : winschema,
@@ -87,15 +86,22 @@ describe('Testing Win Generating Artifacts -',function(){
 		var configurations = 
 		{
 			"win-schema" : {
+				logLevel : backbone.testing,
 				multipleErrors : true,
 				allowAnyObjects : false,
 				requireByDefault : false
 			}
 		};
 
-    	backbone = new winback();
+
+    	//set global log level - can be modified at module level
+    	backbone.logLevel = backbone.testing;
+
     	backEmit = backbone.getEmitter(emptyModule);
-    	backbone.log.logLevel = backbone.log.testing;
+
+    	//logger are assumed to be as verbose as the backbone at creation
+    	backLog = backbone.getLogger({winFunction: "mocha"});
+
 
     	//loading modules is synchronous
     	backbone.loadModules(sampleJSON, configurations);
@@ -103,8 +109,8 @@ describe('Testing Win Generating Artifacts -',function(){
     	var registeredEvents = backbone.registeredEvents();
     	var requiredEvents = backbone.moduleRequirements();
     		
-    	backbone.log('Backbone Events registered: ', registeredEvents);
-    	backbone.log('Required: ', requiredEvents);
+    	backLog.log('Backbone Events registered: ', registeredEvents);
+    	backLog.log('Required: ', requiredEvents);
 
     	backbone.initializeModules(function()
     	{
@@ -173,28 +179,28 @@ describe('Testing Win Generating Artifacts -',function(){
     		// not : "the right stuff"
     	};
 
-		backbone.log('Adding exampleSchema');
-    	qBackboneEmit(backEmit, "schema:addSchema", "exampleSchema", exampleSchema)
+		backLog('Adding exampleSchema');
+    	qBackboneEmit("schema:addSchema", "exampleSchema", exampleSchema)
     		.then(function()
 			{
-				backbone.log('Adding secondSchema');
+				backLog('Adding secondSchema');
 				//add schema without any WIn things attached to it-- with the options param!
-		 		return qBackboneEmit(backEmit, "schema:addSchema", "secondSchema", otherSchema, {skipWINAdditions: true});
+		 		return qBackboneEmit("schema:addSchema", "secondSchema", otherSchema, {skipWINAdditions: true});
 			})
 			.then(function()
 			{
-				return qBackboneEmit(backEmit, "schema:getSchemaReferences", "exampleSchema");
+				return qBackboneEmit("schema:getSchemaReferences", "exampleSchema");
 			})
 			.then(function(sRefs)
 			{
-				backbone.log("\tSchema refs: ".cyan, util.inspect(sRefs, false, 10));
-				return qBackboneEmit(backEmit, "schema:getFullSchema", "exampleSchema");
+				backLog("\tSchema refs: ".cyan, util.inspect(sRefs, false, 10));
+				return qBackboneEmit("schema:getFullSchema", "exampleSchema");
 			})
     		.then(function(fullSchema)
     		{	
     			var defer = Q.defer();
 
-    			backbone.log("\tFull schema: ".blue, util.inspect(fullSchema[0], false, 10));
+    			backLog("\tFull schema: ".blue, util.inspect(fullSchema[0], false, 10));
 
     			backEmit("schema:validate", "exampleSchema", validExample, function(err, isValid, issues)
     			{
@@ -203,7 +209,7 @@ describe('Testing Win Generating Artifacts -',function(){
     					return;
     				}
 
-    				backbone.log('Valid? ' + isValid);
+    				backLog('Valid? ' + isValid);
 
     				if(isValid)
     					should.not.exist(issues);// issues.errors.should.not.exist();
@@ -217,12 +223,12 @@ describe('Testing Win Generating Artifacts -',function(){
     		})
     		.then(function()
     		{
-		 		return qBackboneEmit(backEmit, "schema:getSchemaProperties", ["exampleSchema", "secondSchema"]);
+		 		return qBackboneEmit("schema:getSchemaProperties", ["exampleSchema", "secondSchema"]);
     		})
     		.then(function(props)
     		{
-    			backbone.log("\n\tSchema props: ".magenta, props[0], "\n")
-    			backbone.log("\n\tSchema props2: ".magenta, props[1], "\n")
+    			backLog("\n\tSchema props: ".magenta, props[0], "\n")
+    			backLog("\n\tSchema props2: ".magenta, props[1], "\n")
     			var defer = Q.defer();
 
     			backEmit("schema:validateMany", "exampleSchema", [validExample, thingy], function(err, isValid, issues)
@@ -232,14 +238,14 @@ describe('Testing Win Generating Artifacts -',function(){
     					return;
     				}
 
-    				backbone.log('Many Valid? ' + isValid);
+    				backLog('Many Valid? ' + isValid);
 
     				if(!isValid)
     				{
     					var validity = [];
     					for(var i=0; i < issues.length; i++)
     					{
-    						backbone.log("Is object " + i + " valid? ".green, (issues[i].length ? "No.".red : "Yes.".blue));
+    						backLog("Is object " + i + " valid? ".green, (issues[i].length ? "No.".red : "Yes.".blue));
     						var aIssue = issues[i];
     						for(var e=0; e < aIssue.length; e++)
     						{
@@ -248,7 +254,7 @@ describe('Testing Win Generating Artifacts -',function(){
     					}
     					throw new Error(JSON.stringify(validity));
     				}
-    				// backbone.log("Issues: ", issues);
+    				// backLog("Issues: ", issues);
 
     				if(isValid)
     					should.not.exist(issues);// issues.errors.should.not.exist();
@@ -266,7 +272,7 @@ describe('Testing Win Generating Artifacts -',function(){
     			done();
     		})
     		.fail(function(err){
-    			// backbone.log('Error found: ', err);
+    			// backLog('Error found: ', err);
     			
     			err = typeof err == "string" ? new Error(err) : err;
     			done(err);
