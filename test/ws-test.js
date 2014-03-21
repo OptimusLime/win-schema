@@ -35,7 +35,7 @@ var qBackboneEmit = function()
 
 	var oArgs = arguments;
 	//take out the first arguments
-	var backbone =  [].shift.call(oArgs);
+	var backEmit =  [].shift.call(oArgs);
 
 	if(typeof backbone == "string")
 		throw new Error("Q callback wrong first arg should be backbone, not :" + backbone)
@@ -43,7 +43,7 @@ var qBackboneEmit = function()
 	var cb = cbFunction(backbone, defer);
 	[].push.call(oArgs, cb);
 
-	backbone.emit.apply(backbone, oArgs);
+	backEmit.apply(backbone, oArgs);
 
 	//send back our promise to resolve/reject
 	return defer.promise;
@@ -94,6 +94,7 @@ describe('Testing Win Generating Artifacts -',function(){
 		};
 
     	backbone = new winback();
+    	backEmit = backbone.getEmitter(emptyModule);
     	backbone.log.logLevel = backbone.log.testing;
 
     	//loading modules is synchronous
@@ -173,21 +174,21 @@ describe('Testing Win Generating Artifacts -',function(){
     	};
 
 		backbone.log('Adding exampleSchema');
-    	qBackboneEmit(backbone, "test",  "schema:addSchema", "exampleSchema", exampleSchema)
+    	qBackboneEmit(backEmit, "schema:addSchema", "exampleSchema", exampleSchema)
     		.then(function()
 			{
 				backbone.log('Adding secondSchema');
 				//add schema without any WIn things attached to it-- with the options param!
-		 		return qBackboneEmit(backbone, "test",  "schema:addSchema", "secondSchema", otherSchema, {skipWINAdditions: true});
+		 		return qBackboneEmit(backEmit, "schema:addSchema", "secondSchema", otherSchema, {skipWINAdditions: true});
 			})
 			.then(function()
 			{
-				return qBackboneEmit(backbone, "test",  "schema:getSchemaReferences", "exampleSchema");
+				return qBackboneEmit(backEmit, "schema:getSchemaReferences", "exampleSchema");
 			})
 			.then(function(sRefs)
 			{
 				backbone.log("\tSchema refs: ".cyan, util.inspect(sRefs, false, 10));
-				return qBackboneEmit(backbone, "test",  "schema:getFullSchema", "exampleSchema");
+				return qBackboneEmit(backEmit, "schema:getFullSchema", "exampleSchema");
 			})
     		.then(function(fullSchema)
     		{	
@@ -195,7 +196,7 @@ describe('Testing Win Generating Artifacts -',function(){
 
     			backbone.log("\tFull schema: ".blue, util.inspect(fullSchema[0], false, 10));
 
-    			backbone.emit("test", "schema:validate", "exampleSchema", validExample, function(err, isValid, issues)
+    			backEmit("schema:validate", "exampleSchema", validExample, function(err, isValid, issues)
     			{
     				if(err){
     					defer.reject(err);
@@ -216,7 +217,7 @@ describe('Testing Win Generating Artifacts -',function(){
     		})
     		.then(function()
     		{
-		 		return qBackboneEmit(backbone, "test",  "schema:getSchemaProperties", ["exampleSchema", "secondSchema"]);
+		 		return qBackboneEmit(backEmit, "schema:getSchemaProperties", ["exampleSchema", "secondSchema"]);
     		})
     		.then(function(props)
     		{
@@ -224,7 +225,7 @@ describe('Testing Win Generating Artifacts -',function(){
     			backbone.log("\n\tSchema props2: ".magenta, props[1], "\n")
     			var defer = Q.defer();
 
-    			backbone.emit("test", "schema:validateMany", "exampleSchema", [validExample, thingy], function(err, isValid, issues)
+    			backEmit("schema:validateMany", "exampleSchema", [validExample, thingy], function(err, isValid, issues)
     			{
     				if(err){
     					defer.reject(err);
