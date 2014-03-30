@@ -1,6 +1,6 @@
 {
   "name": "win-schema",
-  "version": "0.0.3-8",
+  "version": "0.0.3-9",
   "description": " WIN module that handles all things schema related! Schema validation, schema loading, schema remote loads, etc etc etc",
   "keywords": [
     "WIN",
@@ -14,12 +14,12 @@
   },
   "main": "lib/win-schema.js",
   "dependencies": {
+    "optimuslime-traverse": "*",
     "tv4": "*"
   },
   "devDependencies": {
     "colors": "*",
     "q": "*",
-    "optimuslime-traverse": "*",
     "should": "*",
     "mocha": "*",
     "win-backbone": "*"
