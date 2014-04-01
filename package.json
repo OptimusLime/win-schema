@@ -1,6 +1,6 @@
 {
   "name": "win-schema",
-  "version": "0.0.4-2",
+  "version": "0.0.4-3",
   "description": " WIN module that handles all things schema related! Schema validation, schema loading, schema remote loads, etc etc etc",
   "keywords": [
     "WIN",
