@@ -54,7 +54,9 @@ var emptyModule =
 		"schema:addSchema",
 		"schema:getSchema",
 		"schema:getSchemaReferences",
-		"schema:getSchemaProperties",
+        "schema:getSchemaProperties",
+        "schema:getReferencesAndParents",
+		"schema:replaceParentReferences",
 		"schema:getFullSchema",
 		"schema:validate",
 		"schema:validateMany"
@@ -67,6 +69,30 @@ var emptyModule =
             done();
         })
     }
+};
+
+var otherSchema = {
+    type : "array",
+    things : "string"
+    // {"$ref" : "exampleSchema"}
+};
+var exampleSchema  = {
+    // noFirst : "object",
+    // yesFirst : {type: "object", yesSecond: {noThird: "array", noFourth: "object"}},
+    bugger : {aThing : "string", inner: {type: "array", test: "string"}},
+    // noSecond : "array",
+    ref : {"$ref": "secondSchema"},
+    firstArray: {
+        type : "array",
+        "$ref": "secondSchema",
+        // items : {
+            // type : "object",
+            // properties :{
+                // stuff : "string"
+            // }
+        // }
+    }
+    // required : ['hope', 'stuff']     
 };
 
 describe('Testing Win Generating Artifacts -',function(){
@@ -120,31 +146,143 @@ describe('Testing Win Generating Artifacts -',function(){
 
     });
 
-    it('Should add schema successfully',function(done){
+   it('Should tell me references successfully',function(done){
 
-    	var otherSchema = {
-    		type : "array",
-    		things : "string"
-    		// {"$ref" : "exampleSchema"}
-    	};
-    	var exampleSchema  = {
-    		// noFirst : "object",
-    		// yesFirst : {type: "object", yesSecond: {noThird: "array", noFourth: "object"}},
-    		bugger : {aThing : "string", inner: {type: "array", test: "string"}},
-    		// noSecond : "array",
-    		ref : {"$ref": "secondSchema"},
-    		firstArray: {
-    			type : "array",
-    			"$ref": "secondSchema",
-    			// items : {
-    				// type : "object",
-    				// properties :{
-    					// stuff : "string"
-    				// }
-    			// }
-    		}
-    		// required : ['hope', 'stuff']		
-    	};
+        var otherSchema = {
+            type : "object",
+            things : "string"
+        };
+        var exampleSchema  = {
+            bugger : {aThing : "string", inner: {type: "array", test: "string"}},
+            ref : {"$ref": "t1Schema2"},
+            firstArray: {
+                type : "array",
+                "$ref": "t1Schema2",
+            }
+        };
+        var validExample = {
+            bugger : {aThing : "help", inner:[]},
+            // hope : { notProp: 5, isProp: 5},
+            ref : {wid: "refWID", parents: ["refp1", "refp2"], things : "stuff"},
+            firstArray : [{wid: "arrayWID", parents: ["arrayp1", "arrayp2"], dbType: "t1Schema2", things: "stuff"}],
+            wid : "originalObject"
+            ,dbType : "t1Schema"
+            ,parents : ["op1"]
+        };
+
+
+        qBackboneEmit("schema:addSchema", "t1Schema1", exampleSchema)
+            .then(function()
+            {
+                backLog('Adding secondSchema');
+                //add schema without any WIn things attached to it-- with the options param!
+                return qBackboneEmit("schema:addSchema", "t1Schema2", otherSchema, {skipWINAdditions: false});
+            })
+            .then(function()
+            {
+                 //make sure full schema is defined for this object
+                return qBackboneEmit("schema:getFullSchema", "t1Schema1");
+            })
+            .then(function()
+            {
+                var tests = {};
+                tests[validExample.wid] = validExample;
+                return qBackboneEmit("schema:getReferencesAndParents", "t1Schema1", tests);
+            })
+            .then(function(sRefs)
+            {
+                backLog("\tSchema ref and parents: ".cyan, util.inspect(sRefs, false, 10));
+                //lets actually do some testing, why not?
+
+                var refs = sRefs[validExample.wid];
+                validExample.parents.join(',').should.equal(refs[validExample.wid].join(','));
+                validExample.ref.parents.join(',').should.equal(refs[validExample.ref.wid].join(','));
+                validExample.firstArray[0].parents.join(',').should.equal(refs[validExample.firstArray[0].wid].join(','));
+
+                //woah, they matched, that's crazy!
+                done();
+            })
+            .fail(function(err){
+                // backLog('Error found: ', err);
+                
+                err = typeof err == "string" ? new Error(err) : err;
+                done(err);
+            });        
+    });
+
+   it('Should replace references successfully',function(done){
+
+        var otherSchema = {
+            type : "object",
+            things : "string"
+        };
+        var exampleSchema  = {
+            bugger : {aThing : "string", inner: {type: "array", test: "string"}},
+            ref : {"$ref": "t2Schema-2"},
+            firstArray: {
+                type : "array",
+                "$ref": "t2Schema-2",
+            }
+        };
+        var validExample = {
+            bugger : {aThing : "help", inner:[]},
+            // hope : { notProp: 5, isProp: 5},
+            ref : {wid: "refWID", parents: ["refp1", "refp2"], things : "stuff"},
+            firstArray : [{wid: "arrayWID", parents: ["arrayp1", "arrayp2"], dbType: "t2Schema-2", things: "stuff"}],
+            wid : "originalObject"
+            ,dbType : "t2Schema-1"
+            ,parents : ["op1"]
+        };
+
+        var toReplace = {};
+        
+        qBackboneEmit("schema:addSchema", "t2Schema-1", exampleSchema)
+            .then(function()
+            {
+                backLog('Adding secondSchema');
+                //add schema without any WIn things attached to it-- with the options param!
+                return qBackboneEmit("schema:addSchema", "t2Schema-2", otherSchema, {skipWINAdditions: false});
+            })
+            .then(function()
+            {
+                 //make sure full schema is defined for this object
+                return qBackboneEmit("schema:getFullSchema", "t2Schema-1");
+            })
+            .then(function()
+            {
+                toReplace[validExample.wid] = ["rootReplace"];
+                toReplace[validExample.ref.wid] = ["refReplace1", "refReplace2"];
+                toReplace[validExample.firstArray[0].wid] = ["farrayReplace1", "farrayReplace2"]
+
+                return qBackboneEmit("schema:replaceParentReferences", "t2Schema-1", validExample, toReplace);
+            })
+            .then(function(replaced)
+            {
+                backLog("\tSchema ref reaplced: ".cyan, util.inspect(replaced, false, 10));
+                //lets actually do some testing, why not?
+
+                validExample.dbType = "bubbly";
+                //test that we made an actual clone, not the same object
+                validExample.dbType.should.not.equal(replaced.ref);
+
+                toReplace[validExample.wid].join('').should.equal(replaced.parents.join(''));
+                toReplace[validExample.ref.wid].join('').should.equal(replaced.ref.parents.join(''));
+                toReplace[validExample.firstArray[0].wid].join('').should.equal(replaced.firstArray[0].parents.join(''));
+
+                //it worked that cray! Okay, I'll see myself out.
+                done();
+            })
+            .fail(function(err){
+                // backLog('Error found: ', err);
+                
+                err = typeof err == "string" ? new Error(err) : err;
+                done(err);
+            });        
+    });
+
+    it('Should add schema successfully',function(done){
+        done();
+        return;
 
     	var thingy = {
     		bugger : {skip : "string"},
